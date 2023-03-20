@@ -14,7 +14,7 @@ frame_count = 0
 blue_light = 0
 red_light = 0
 while True:
-    #steering
+    #steering done by Olivia
     x_strength = accelerometer.get_x()
     x = round(x_strength/128,2)#rounded because the nromal results are large
     if x > 6: x = 6
@@ -26,12 +26,14 @@ while True:
     value = pin0.read_analog() #taken from mr gallos code
     #https://github.com/MrGallo/microbit-tutorial/blob/main/adkeys-python.md
     
-    frame_count += 1 #controls lights flashing
+    #Marsha
+    frame_count += 1
     if frame_count == 25:
         frame_count = 0
-    print(frame_count)
+    #print(frame_count)
     
-    if value == KEY_A:
+    #Annette
+    if value == KEY_A: 
         red_light = 0
         #if on, turn off
         #if off, turn on
@@ -47,7 +49,8 @@ while True:
             red_light = 0
         else:
             red_light = 30
-   
+            
+   #Marsha
     if blue_light == 30 and frame_count >=12:
         pin1.write_digital(1)
     else:
