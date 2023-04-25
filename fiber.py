@@ -197,7 +197,7 @@ while running:
     
     if gamemode == "main_menu":
         if clicked:
-            for i in range(0,3):
+            for i in range(0,4):
                 if mouse_x >= 100 and mouse_x <= 600 and mouse_y >= 250+i*65 and mouse_y <= 300+i*65:
                     if i == 0:
                         gamemode = "level_select"
