@@ -20,6 +20,8 @@ title_font = pygame.font.SysFont('Comic Sans MS',100,False,True)
 menu_font = pygame.font.SysFont('Arial', 40)
 tutorial_font = pygame.font.SysFont('Arial', 25)
 level_select_font = pygame.font.SysFont('Arial', 60)
+pause_font = pygame.font.SysFont('Arial', 30)
+pause_font_selected = pygame.font.SysFont('Arial', 30,True)
 menu_options = [
     "LEVEL SELECT",
     "HOW TO PLAY",
@@ -30,10 +32,19 @@ tutorial_text = [
     "Use WASD keys to move",
     "When you move, you will continue to move until you hit a wall",
     "Collect as many yellow coins as you can!",
-    "(Press ESC to exit to the menu)"
+    "Try to collect stars too, I guess.",
+    "Each coin gives 1 point, while stars give 5.",
+    "(Press ESC to return)"
 ]
 settings_sliders = [
-    ["Camera movement",300,False]
+    ["Camera movement",300,False],
+    ["Speed",300,False]
+]
+pause_options = [
+    "Resume",
+    "How to Play",
+    "Settings",
+    "Exit to Main Menu"
 ]
 
 levels_unlocked = 0
@@ -65,10 +76,17 @@ walls = []
 coins = []
 stars = []
 
+coin_animation_timer = 0
+coin_animation_switch = False
+coin_colour = 0
+
+previously_paused = False
+
 #SETTINGS
 camera_slam = 3
+speed = 3
 
-def simple_box(x1,y1,x2,y2):
+def walls_box(x1,y1,x2,y2):
     for i in range(x1,x2):
         walls.append([i,y1])
         walls.append([i,y2])
@@ -76,24 +94,24 @@ def simple_box(x1,y1,x2,y2):
         walls.append([x1,i])
         walls.append([x2,i])
     walls.append([x2,y2])
-def simple_fill(x1,y1,x2,y2):
+def walls_fill(x1,y1,x2,y2):
     for i in range(x1,x2+1):
        for k in range(y1,y2+1):
            walls.append([i,k])      
-def single_wall(x,y):
+def walls_single(x,y):
     walls.append([x,y])
 
-def simple_fill_coins(x1,y1,x2,y2):
+def coins_fill(x1,y1,x2,y2):
     for i in range(x1,x2+1):
        for k in range(y1,y2+1):
            coins.append([i,k])  
-def single_coin(x,y):
+def coins_single(x,y):
     coins.append([x,y])
 
 def add_star(x,y):
     global stars
     stars.append([x,y,True])
-
+# i stopped working on this game for like two weeks and now i dont know how any of this works ;u;
 def movement(direction):
     global movement_direction_x, movement_direction_y
     global moving, hit_a_wall, moves_used
@@ -144,29 +162,51 @@ def movement_check():
 
 def load_level(level):
     global character_x, character_y, goal_x, goal_y
-    global walls, coins, points, moves_used
+    global walls, coins, stars, points, moves_used
+    global coin_animation_timer, coin_animation_switch, coin_colour
+    coin_animation_timer = 0
+    coin_animation_switch = False
+    coin_colour = 0
     points = 0
     moves_used = 0
     walls = []
     coins = []
+    stars = []
     
+    walls_box(0,0,int(WIDTH/50)-1,int(HEIGHT/50)-1)
     if level == 1:
+        goal_x = 1
+        goal_y = 1
+        character_x = 7
+        character_y = 2
+        
+        walls_fill(7,3,10,3)
+        walls_fill(6,1,6,7)
+        walls_single(12,1)
+        walls_single(12,3)
+        walls_single(7,4)
+        walls_single(7,7)
+#         walls_fill(11,7,12,8)
+#         walls_fill(10,4,10,5)
+        
+        coins_fill(11,3,11,6)
+    elif level == 2:
         goal_x = 12
         goal_y = 8
         character_x = 12
         character_y = 1
         
-        simple_box(0,0,int(WIDTH/50)-1,int(HEIGHT/50)-1)
-        simple_fill(10,4,12,4)
-        single_wall(10,1)
-        simple_fill(9,3,9,4)
-        single_wall(1,1)
-        simple_fill(1,4,7,4)
+        walls_box(0,0,int(WIDTH/50)-1,int(HEIGHT/50)-1)
+        walls_fill(10,4,12,4)
+        walls_single(10,1)
+        walls_fill(9,3,9,4)
+        walls_single(1,1)
+        walls_fill(1,4,7,4)
         
-        simple_fill_coins(1,2,9,2)
-        simple_fill_coins(10,2,10,3)
-        simple_fill_coins(11,1,11,3)
-        simple_fill_coins(12,2,12,3)
+        coins_fill(1,2,9,2)
+        coins_fill(10,2,10,3)
+        coins_fill(11,1,11,3)
+        coins_fill(12,2,12,3)
         
         add_star(9,1)
     else:
@@ -175,7 +215,6 @@ def load_level(level):
         character_x = 12
         character_y = 1
         
-        simple_box(0,0,int(WIDTH/50)-1,int(HEIGHT/50)-1)
 # ---------------------------
 running = True
 while running:
@@ -184,6 +223,15 @@ while running:
             if event.key == K_ESCAPE:
                 if gamemode == "main_menu":
                     running = False
+                elif gamemode == "level":
+                    gamemode = "pause"
+                elif gamemode == "pause":
+                    gamemode = "level"
+                elif gamemode == "tutorial" or gamemode == "settings": 
+                    if previously_paused:
+                        gamemode = "pause"
+                    else:
+                        gamemode = "main_menu"
                 else: gamemode = "main_menu"
         elif event.type == QUIT:
             running = False
@@ -196,6 +244,7 @@ while running:
     keys = pygame.key.get_pressed()
     
     if gamemode == "main_menu":
+        previously_paused = False
         if clicked:
             for i in range(0,4):
                 if mouse_x >= 100 and mouse_x <= 600 and mouse_y >= 250+i*65 and mouse_y <= 300+i*65:
@@ -220,19 +269,16 @@ while running:
                                 gamemode = "level"
                                 level_clicked = True
     elif gamemode == "settings":
-        if clicked:
-            if mouse_x >= 75+settings_sliders[0][1] and mouse_x <= 125+settings_sliders[0][1] and mouse_y >= 98 and mouse_y <= 127:
-                settings_sliders[0][2] = True
-        elif released and settings_sliders[0][2]:
+        for i in range(0,len(settings_sliders)):
+            if clicked:
+                if mouse_x >= 75+settings_sliders[i][1] and mouse_x <= 125+settings_sliders[0][1] and mouse_y >= 98+i*100 and mouse_y <= 127+i*100:
+                    settings_sliders[i][2] = True
+            if settings_sliders[i][2]:
+                settings_sliders[i][0] = mouse_x-50
+        if released:
             settings_sliders[0][2] = False
-        
-        if settings_sliders[0][2]:
-            settings_sliders[0][1] = (mouse_x-100)
-            
-        if settings_sliders[0][1] < 0:
-            settings_sliders[0][1] = 0
-        elif settings_sliders[0][1] > 500:
-            settings_sliders[0][1] = 500
+            settings_sliders[1][2] = False
+
     elif gamemode == "level":
         if moving == False:
             if keys[119] == True:  # w
@@ -246,19 +292,44 @@ while running:
                 
             if character_x == goal_x and character_y == goal_y:
                 gamemode = "level_complete"
-        
+        if coin_animation_timer < 70:
+            coin_animation_timer += 1
+        if coin_animation_timer < 60:
+            if coin_animation_switch:
+                coin_colour = 255- 255 * coin_animation_timer/60
+            else:
+                coin_colour = 255 * coin_animation_timer/60
+        elif coin_animation_timer >= 60:
+            if coin_animation_switch:
+                coin_animation_switch = False
+            else:
+                coin_animation_switch = True
+            coin_animation_timer = 0
         #3x speed! it looks bad and slow when its 1 block/frame  
-        movement_check()
-        movement_check()
-        movement_check()
+        for i in range(0,int(speed)):
+            movement_check()
+
         
-        camera_x = camera_x * 0.8
-        camera_y = camera_y * 0.8
+        camera_x = camera_x * 0.75
+        camera_y = camera_y * 0.75
 
     elif gamemode == "level_complete":
         if clicked:
             gamemode = "main_menu"
+    elif gamemode == "pause":
+        previously_paused = True
+        if clicked and mouse_x > 5 and mouse_x < 280:
+            if mouse_y > 100 and mouse_y < 30:
+                gamemode = "level"
+            elif mouse_y > 140 and mouse_y < 170:
+                gamemode = "tutorial"
+            elif mouse_y > 180 and mouse_y < 210:
+                gamemode = "settings"
+            elif mouse_y > 220 and mouse_y < 250:
+                gamemode = "main_menu"
+        
     camera_slam = settings_sliders[0][1]/100
+    speed = settings_sliders[1][1]/100 + 1
     clicked = False
     released = False
 #=======================================================#
@@ -280,6 +351,7 @@ while running:
         for i in range(len(tutorial_text)):
             tut_text = tutorial_font.render(tutorial_text[i],True,(255,255,255))
             screen.blit(tut_text,(10,40*i))
+            
     elif gamemode == "level_select":
         j = 0
         for k in range (0,3):
@@ -291,26 +363,55 @@ while running:
                 j += 1
                 level_number_text = level_select_font.render(str(j), True, (0,0,0))
                 screen.blit(level_number_text,(65+135*i-(len(str(j))-1)*18,160+115*k))
+    
     elif gamemode == "settings":
-        settings_label = menu_font.render((settings_sliders[0][0] +": "+ str(camera_slam)), True, (255,255,255))
-        pygame.draw.rect(screen,(100,100,100),(75,100,550,25))
-        if settings_sliders[0][2]:
-            pygame.draw.rect(screen,(200,200,200),(75+settings_sliders[0][1],98,50,29))
-        else:
-            pygame.draw.rect(screen,(160,160,160),(75+settings_sliders[0][1],98,50,29))
-        screen.blit(settings_label,(50,50))
+        for i in range(0,len(settings_sliders)):
+            settings_label = menu_font.render((settings_sliders[i][0] +": "+ str(camera_slam)), True, (255,255,255))
+            pygame.draw.rect(screen,(100,100,100),(75,100+i*100,550,25))
+            if settings_sliders[i][2]:
+                pygame.draw.rect(screen,(200,200,200),(75+settings_sliders[i][1],98+i*100,50,29))
+            else:
+                pygame.draw.rect(screen,(160,160,160),(75+settings_sliders[i][1],98+i*100,50,29))
+            screen.blit(settings_label,(50,50+i*100))
+    
     elif gamemode == "level":
         pygame.draw.rect(screen,(255,255,255),(goal_x*50 + camera_x, goal_y*50 + camera_y,50,50))
-        for i in range(len(coins)):
-            pygame.draw.circle(screen,(255,255,0),(coins[i][0]*50+camera_x+25,coins[i][1]*50+camera_y+25),10)
-        for i in range(len(walls)):
+        for i in range(len(coins)): #renders coins (obviously)
+            pygame.draw.circle(screen,(255,255,coin_colour),(coins[i][0]*50+camera_x+25,coins[i][1]*50+camera_y+25),10)
+        for i in range(len(walls)): #renders walls (duh)
             pygame.draw.rect(screen,(0,0,0),(walls[i][0]*50 + camera_x, walls[i][1]*50 + camera_y, 50, 50))
             pygame.draw.rect(screen,(60,60,85),(walls[i][0]*50+5 + camera_x, walls[i][1]*50+5 + camera_y,40,40))
+        for i in range(len(stars)): #renders stars (who would've guessed
+            if stars[i][2]:
+                pygame.draw.circle(screen,(255,255,coin_colour),(stars[i][0]*50+camera_x+25,stars[i][1]*50+camera_y+25),20)
+        pygame.draw.circle(screen, (character_r, character_g, character_b), (character_x*50+25 + camera_x, character_y*50+25 + camera_y), 25)
+    
+    elif gamemode == "pause":
+        pygame.draw.rect(screen,(155,155,155),(goal_x*50 + camera_x, goal_y*50 + camera_y,50,50))
+        for i in range(len(coins)):
+            pygame.draw.circle(screen,(155,155,coin_colour*0.6),(coins[i][0]*50+camera_x+25,coins[i][1]*50+camera_y+25),10)
+        for i in range(len(walls)):
+            pygame.draw.rect(screen,(0,0,0),(walls[i][0]*50 + camera_x, walls[i][1]*50 + camera_y, 50, 50))
+            pygame.draw.rect(screen,(36,36,51),(walls[i][0]*50+5 + camera_x, walls[i][1]*50+5 + camera_y,40,40))
         for i in range(len(stars)):
             if stars[i][2]:
-                pygame.draw.circle(screen,(255,255,0),(stars[i][0]*50+camera_x+25,stars[i][1]*50+camera_y+25),20)
+                pygame.draw.circle(screen,(255,255,coin_colour*0.6),(stars[i][0]*50+camera_x+25,stars[i][1]*50+camera_y+25),20)
 
-        pygame.draw.circle(screen, (character_r, character_g, character_b), (character_x*50+25 + camera_x, character_y*50+25 + camera_y), 25)
+        pygame.draw.circle(screen, (character_r*0.6, character_g*0.6, character_b*0.6), (character_x*50+25 + camera_x, character_y*50+25 + camera_y), 25)
+        
+        pygame.draw.rect(screen,(0,0,0),(0,0,260,HEIGHT))
+        pause_level = menu_font.render(("LEVEL " + str(current_level)),True,(255,255,255))
+        screen.blit(pause_level,(5,5))
+        points_text = pause_font_selected.render(("Points: "+ str(points)),True,(255,255,255))
+        screen.blit(points_text,(5,60))
+        for i in range(0, len(pause_options)):
+            if mouse_x > 5 and mouse_x < 280 and mouse_y > i*40+100 and mouse_y < i*40+130:
+                pause_text = pause_font_selected.render(pause_options[i], True, (255,255,255))
+            else:
+                pause_text = pause_font.render(pause_options[i], True, (200,200,200))
+            screen.blit(pause_text,(5,i*40+100))
+        
+    
     elif gamemode == "level_complete":
         congration = level_select_font.render(("LEVEL " + str(current_level) + " COMPLETE"), True, (255,255,255))
         stats1 = menu_font.render("Points: "+str(points), True, (255,255,255))
